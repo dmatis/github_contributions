@@ -1,0 +1,24 @@
+{
+  "name": "github_contributions",
+  "version": "1.0.0",
+  "description": "An app that displays a users contributions over a given period",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.16.4",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmatis/github_contributions.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dmatis/github_contributions/issues"
+  },
+  "homepage": "https://github.com/dmatis/github_contributions#readme"
+}
