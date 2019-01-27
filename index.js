@@ -32,12 +32,13 @@
 
 
 // Commits
-
+var Promise= require('promise');
 
 // Set this up as an input to the server
-var user = 'Dogild';
+var user = 'amilner42';
 var userInfo = {};
 var repos = [];
+var token = 'd0842c628bb93efa5cc576633e9034f90b637580';
 // var user = 'dmatis';
 var baseUrl = `https://api.github.com/users/${user}`
 var contributionArray = new Array(365).fill(0);
@@ -98,7 +99,8 @@ function getUserInfo(callback) {
   const options = {
     url: `https://api.github.com/users/${user}`,
     headers: {
-      'User-Agent': `${user}`
+      'User-Agent': `${user}`,
+      'Authorization': `token ${token}`
     }
   };
   request(options, function (error, response, body) {
@@ -108,40 +110,51 @@ function getUserInfo(callback) {
       // fs.writeFileSync('user.json', body);
     }
     else {
-      throw new Error("Unable to retrieve data from Github");
+      return console.error('Failed to get User Info:', error);
     }
   });
 }
 
-function getRepositoryCommits(repo, callback) {
-  //curl -i https://api.github.com/repos/${user}/${repo}/commits?author=${user}
-  const request = require('request');
-  const options = {
-    url: `https://api.github.com/repos/${user}/${repo}/commits?author=${user}`,
-    headers: {
-      'User-Agent': `${user}`
-    }
-  };
-  console.log(`https://api.github.com/repos/${user}/${repo}/commits?author=${user}`);
-  // request(options, function (error, response, body) {
-  //   if (!error && response.statusCode == 200) {
-  //     callback(JSON.parse(body));
-  //   }
-  //   else {
-  //     throw new Error("Unable to retrieve data from Github");
-  //   }
-  // });
+function getRepositoryCommits(repo) {
+  return new Promise((resolve, reject) => {
+    const request = require('request');
+    const options = {
+      url: `https://api.github.com/repos/${user}/${repo}/commits?author=${user}`,
+      headers: {
+        'User-Agent': `${user}`,
+        'Authorization': `token ${token}`
+      }
+    };
+
+    request(options, function (error, response, body) {
+      if (error) {
+        return reject(error);
+      }
+      return resolve(JSON.parse(body), dateArray);
+    })
+  })
 }
 
 // Only include commits that match user id
 // Note: will need to handle pagination
 // Note: will need to handle the case where user commits to repos that he/she does not own
+// If commit list is sorted, we could stop searching after we are beyond 1 year
 function getCommitContributions(res, dates, repos) {
   // For each repo, get all commits and iterate through them, keeping only those that match dates in last year (1 API call per repo)
   for (var repo = 0; repo < repos.length; repo++) {
-    getRepositoryCommits(repos[repo], function (res, dates) {
-      console.log(res);
-    });
+    getRepositoryCommits(repos[repo])
+    .then(function (res, dates) {
+      for (var commit = 0; commit < res.length; commit++) {
+        for (var date = 0; date < dates.length; date++) {
+          var regex_date = new RegExp(dates[date], 'g');
+          console.log(res[commit]["commit"]["committer"]["date"])
+          if (res[commit]["commit"]["committer"]["date"].match(regex_date)) {
+            contributionArray[date] += 1;
+          }
+        }
+      }
+    })
+    // .then(console.dir(contributionArray));
   }
 }
 
@@ -181,21 +194,20 @@ function getRepositoryData(dates) {
   const options = {
     url: `https://api.github.com/users/${user}/repos`,
     headers: {
-      'User-Agent': `${user}`
+      'User-Agent': `${user}`,
+      'Authorization': `token ${token}`
     }
   };
   request(options, function (error, response, body) {
     if (!error && response.statusCode == 200) {
-      const fs = require('fs');
       const res = JSON.parse(body);
-      fs.writeFileSync('output.json', body);
       // Now data is available scan it for all info needed
       getRepositoryContributions(res, dates);
       // getPullRequestContributions();
 
     }
     else {
-      throw new Error("Unable to retrieve data from Github");
+      return console.error('Failed to get Repository Data:', error);
     }
   })
 };

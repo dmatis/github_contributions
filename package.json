@@ -4,8 +4,11 @@
   "description": "An app that displays a users contributions over a given period",
   "main": "index.js",
   "dependencies": {
+    "async": "^2.6.1",
     "express": "^4.16.4",
-    "request": "^2.88.0"
+    "promise": "^8.0.2",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
   },
   "devDependencies": {},
   "scripts": {
