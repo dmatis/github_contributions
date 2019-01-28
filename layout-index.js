@@ -19,7 +19,7 @@ function computeDateArray() {
 }
 
 function getPullRequestContributions(date) {
-  url = `https://api.github.com/repos/${user}/${repo}/pulls`
+  url = `https://api.github.com/repos/${user}/${repo}/pulls?since=${date}T00:00:00Z`
 }
 
 function getUserInfo(callback) {
@@ -69,6 +69,54 @@ function getRepositoryList(callback) {
   })
 };
 
+// Need to filter out results that are not created by user
+function getIssueContributions(dates, repos, callback) {
+
+  async.map(repos, function (repo, callback) {
+
+    const request = require('request');
+    const options = {
+      // Only return results from the past year
+      url: `https://api.github.com/repos/${user}/${repo}/issues?since=${dates[0]}T00:00:00Z`,
+      headers: {
+        'User-Agent': `${user}`,
+        'Authorization': `token ${token}`
+      }
+    };
+
+    // TODO: Maxes out at 30 items, need to paginate for more
+    request(options, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        const issues = JSON.parse(body);
+        callback(null, issues);
+      }
+      else {
+        return console.error(`Failed to get issues from the repo ${repo}:`, error);
+      }
+    })
+  }, function(err, results) {
+      var issueContributionArray = new Array(365).fill(0);
+
+      for (var r = 0; r < results.length; r++) {
+        if (results[r] != undefined && results[r].length > 0) {
+          for (var i = 0; i < results[r].length; i++) {
+
+            for (var date = 0; date < dates.length; date++) {
+              var regex_date = new RegExp(dates[date], 'g');
+
+              if ((results[r][i]["user"]["login"] == user) && (results[r][i]["created_at"].match(regex_date))) {
+                issueContributionArray[date] += 1;
+              }
+            }
+          }
+        }
+      }
+      // This will deliver the final data back to our eventual function to sum up all the pieces
+      callback(null, issueContributionArray);
+  });
+
+}
+
 function getCommitContributions(dates, repos, callback) {
 
   async.map(repos, function (repo, callback) {
@@ -116,9 +164,6 @@ function getCommitContributions(dates, repos, callback) {
   });
 }
 
-
-
-
 function testParallel(dateArray, repos) {
 
   async.parallel({
@@ -126,15 +171,18 @@ function testParallel(dateArray, repos) {
           getCommitContributions(dateArray, repos, callback);
       },
       two: function(callback) {
-          callback(null, 'xyz\n');
+          getIssueContributions(dateArray, repos, callback);
       },
       three: function(callback) {
           getUserInfo(callback);
       }
     },
     function(err, results) {
-      console.log(results.one) // THIS GETS OUR COMMIT CONTRIBUTIONS
-      // console.log(results.two)
+      // console.log(results.one) // THIS GETS OUR COMMIT CONTRIBUTIONS
+      // console.log(results.two + results.one)
+      var combinedResults = results.one + results.two results.three
+      const fs = require('fs');
+      fs.writeFile('output.txt', combinedResults)
       // console.log(results.three)
     });
 }
