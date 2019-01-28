@@ -1,46 +1,8 @@
-// TODO:
-// Write a function() for generic web request
-// Write a function() for each request type
-// Write a function() for combining all the contribution types
-
-// All API calls needed:
-// GET repos
-// 
-
-// Function for getting contribution for one day
-// For-loop for getting contribution on every day
-
-// Definition of contribution:
-// https://help.github.com/articles/why-are-my-contributions-not-showing-up-on-my-profile/
-
-
-// Issues
-// Relies on needing repositories
-// GET /user/issues
-// Sort by date created / updated?
-
-// Repositories
-// GET /user/repos
-// Create
-
-
-// Pull requests:
-// Need to first get all repos
-// Then get pull requests for those repos
-// Then return those that have been updated that day
-// Only counts if: owner of PR, created, updated, merged, closed
-
-
-// Commits
-var Promise= require('promise');
-
-// Set this up as an input to the server
-var user = 'amilner42';
+var async = require("async");
+var user = 'Dogild';
 var userInfo = {};
 var repos = [];
 var token = 'd0842c628bb93efa5cc576633e9034f90b637580';
-// var user = 'dmatis';
-var baseUrl = `https://api.github.com/users/${user}`
 var contributionArray = new Array(365).fill(0);
 
 // Get today's date and compute the formatted dates for a year
@@ -56,44 +18,6 @@ function computeDateArray() {
   return dateArray
 }
 
-function getPullRequestContributions(date) {
-  url = `https://api.github.com/repos/${user}/${repo}/pulls`
-}
-
-// Includes the following repository activity that match for a given date:
-// Created
-// Updated
-// Pushed
-// function getRepositoryData(date, requestUrl) {
-//   // Get repos
-//   const request = require('request');
-//   const options = {
-//     url: requestUrl,
-//     headers: {
-//       'User-Agent': 'dmatis'
-//     }
-//   };
-//   request(options, function (error, response, body) {
-//     if (!error && response.statusCode == 200) {
-//       const fs = require('fs');
-//       const res = JSON.parse(body);
-//       console.log(res)
-//       fs.write('output.txt', res);
-//       // for each repo in response, inspect created_at, updated_at, pushed_at
-//       // if it matches the 'date' keep it in an array
-//       // for (var i = 0; i < res.length; i++) {
-//       //   console.log(res[i].created_at);
-//       //   var regex_date = new RegExp(date, 'g');
-//       //   if (res[i].created_at.match(regex_date)) {
-//       //     console.log(res[i].created_at);
-//       //   }
-//       // }
-//     }
-//   })
-// };
-
-
-// Not needed yet
 function getUserInfo(callback) {
   const request = require('request');
   const options = {
@@ -105,9 +29,7 @@ function getUserInfo(callback) {
   };
   request(options, function (error, response, body) {
     if (!error && response.statusCode == 200) {
-      // const fs = require('fs');
-      callback(JSON.parse(body));
-      // fs.writeFileSync('user.json', body);
+      callback(null, JSON.parse(body));
     }
     else {
       return console.error('Failed to get User Info:', error);
@@ -115,80 +37,15 @@ function getUserInfo(callback) {
   });
 }
 
-function getRepositoryCommits(repo) {
-  return new Promise((resolve, reject) => {
-    const request = require('request');
-    const options = {
-      url: `https://api.github.com/repos/${user}/${repo}/commits?author=${user}`,
-      headers: {
-        'User-Agent': `${user}`,
-        'Authorization': `token ${token}`
-      }
-    };
-
-    request(options, function (error, response, body) {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(JSON.parse(body), dateArray);
-    })
-  })
-}
-
-// Only include commits that match user id
-// Note: will need to handle pagination
-// Note: will need to handle the case where user commits to repos that he/she does not own
-// If commit list is sorted, we could stop searching after we are beyond 1 year
-function getCommitContributions(res, dates, repos) {
-  // For each repo, get all commits and iterate through them, keeping only those that match dates in last year (1 API call per repo)
-  for (var repo = 0; repo < repos.length; repo++) {
-    getRepositoryCommits(repos[repo])
-    .then(function (res, dates) {
-      for (var commit = 0; commit < res.length; commit++) {
-        for (var date = 0; date < dates.length; date++) {
-          var regex_date = new RegExp(dates[date], 'g');
-          console.log(res[commit]["commit"]["committer"]["date"])
-          if (res[commit]["commit"]["committer"]["date"].match(regex_date)) {
-            contributionArray[date] += 1;
-          }
-        }
-      }
-    })
-  }
-}
-
-function getRepositoryList(res) {
+function formattedRepositoryList(res) {
   for (var i = 0; i < res.length; i++) {
     repos.push(res[i].name);
   }
   return repos
 }
 
-function getRepositoryContributions(res, dates) {
-  // for each repo in response, inspect created_at, updated_at, pushed_at
-  // if it matches the 'date' increment contribution
-  getCommitContributions(res, dates, getRepositoryList(res));
-
-  // for (var d = 0; d < dates.length; d++) {
-
-  //   for (var r = 0; r < res.length; r++) {
-  //     var regex_date = new RegExp(dates[d], 'g');
-  //     if (res[r].created_at.match(regex_date)) {
-  //       contributionArray[r] += 1;
-  //     }
-  //     if (res[r].updated_at.match(regex_date)) {
-  //       contributionArray[r] += 1;
-  //     }
-  //     if (res[r].pushed_at.match(regex_date)) {
-  //       contributionArray[r] += 1;
-  //     }
-  //   }
-  // }
-  // console.dir(contributionArray);
-}
-
-function getRepositoryData(dates) {
-  // Get repos - 1 API call
+function getRepositoryList(callback) {
+  // Get repos: 1 API call
   const request = require('request');
   const options = {
     url: `https://api.github.com/users/${user}/repos`,
@@ -200,10 +57,7 @@ function getRepositoryData(dates) {
   request(options, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       const res = JSON.parse(body);
-      // Now data is available scan it for all info needed
-      getRepositoryContributions(res, dates);
-      // getPullRequestContributions();
-
+      callback(formattedRepositoryList(res))
     }
     else {
       return console.error('Failed to get Repository Data:', error);
@@ -211,45 +65,176 @@ function getRepositoryData(dates) {
   })
 };
 
-// ** WORKING BELOW **
+function getPullRequestContributions(dates, repos, callback) {
 
-// function sendRequest(requestUrl, callback) {
-//   const request = require('request');
-//   const options = {
-//     url: requestUrl,
-//     headers: {
-//       'User-Agent': 'dmatis'
-//     }
-//   };
-//   request(options, callback);
-// }
+  async.map(repos, function (repo, callback) {
+    const request = require('request');
+    const options = {
+      url: `https://api.github.com/repos/${user}/${repo}/pulls`,
+      headers: {
+        'User-Agent': `${user}`,
+        'Authorization': `token ${token}`
+      }
+    };
 
-// function callback(error, response, body) {
-//   if (!error && response.statusCode == 200) {
-//     const res = JSON.parse(body);
-//      //console.log(res);
-//     return res;
-//   }
-// }
+    // TODO: Maxes out at 30 items, need to paginate for more
+    request(options, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        const pullRequests = JSON.parse(body);
+        callback(null, pullRequests);
+      }
+      else {
+        return console.error(`Failed to get Pull Requests from the repo ${repo}:`, error);
+      }
+    })
+  }, function(err, results) {
+      var pullRequestContributionArray = new Array(365).fill(0);
+
+      for (var r = 0; r < results.length; r++) {
+        if (results[r] != undefined && results[r].length > 0) {
+          for (var p = 0; p < results[r].length; p++) {
+
+            for (var date = 0; date < dates.length; date++) {
+              var regex_date = new RegExp(dates[date], 'g');
+
+              if ((results[r][p]["user"]["login"] == user) && (results[r][p]["created_at"].match(regex_date))) {
+                pullRequestContributionArray[date] += 1;
+              }
+            }
+          }
+        }
+      }
+
+      // This will deliver the final data back to our eventual function to sum up all the pieces
+      callback(null, pullRequestContributionArray);
+  });
+}
 
 
-// ** UNCOMMENT WHEN READY **
+// Need to filter out results that are not created by user
+function getIssueContributions(dates, repos, callback) {
 
+  async.map(repos, function (repo, callback) {
+
+    const request = require('request');
+    const options = {
+      // Only return results from the past year
+      url: `https://api.github.com/repos/${user}/${repo}/issues?since=${dates[0]}T00:00:00Z`,
+      headers: {
+        'User-Agent': `${user}`,
+        'Authorization': `token ${token}`
+      }
+    };
+
+    // TODO: Maxes out at 30 items, need to paginate for more
+    request(options, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        const issues = JSON.parse(body);
+        callback(null, issues);
+      }
+      else {
+        return console.error(`Failed to get issues from the repo ${repo}:`, error);
+      }
+    })
+  }, function(err, results) {
+      var issueContributionArray = new Array(365).fill(0);
+
+      for (var r = 0; r < results.length; r++) {
+        if (results[r] != undefined && results[r].length > 0) {
+          for (var i = 0; i < results[r].length; i++) {
+
+            for (var date = 0; date < dates.length; date++) {
+              var regex_date = new RegExp(dates[date], 'g');
+
+              if ((results[r][i]["user"]["login"] == user) && (results[r][i]["created_at"].match(regex_date))) {
+                issueContributionArray[date] += 1;
+              }
+            }
+          }
+        }
+      }
+      // This will deliver the final data back to our eventual function to sum up all the pieces
+      callback(null, issueContributionArray);
+  });
+
+}
+
+function getCommitContributions(dates, repos, callback) {
+
+  async.map(repos, function (repo, callback) {
+
+    const request = require('request');
+    const options = {
+      // Only return results from the past year
+      url: `https://api.github.com/repos/${user}/${repo}/commits?author=${user}&since=${dates[0]}T00:00:00Z`,
+      headers: {
+        'User-Agent': `${user}`,
+        'Authorization': `token ${token}`
+      }
+    };
+
+    // TODO: Maxes out at 30 commits, need to paginate for more
+    request(options, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        const commits = JSON.parse(body);
+        callback(null, commits);
+      }
+      else {
+        return console.error(`Failed to get commits from the repo ${repo}:`, error);
+      }
+    })
+  }, function(err, results) {
+      var commitContributionArray = new Array(365).fill(0);
+
+      for (var r = 0; r < results.length; r++) {
+        if (results[r] != undefined && results[r].length > 0) {
+          for (var c = 0; c < results[r].length; c++) {
+
+            for (var date = 0; date < dates.length; date++) {
+              var regex_date = new RegExp(dates[date], 'g');
+
+              if (results[r][c]["commit"]["committer"]["date"].match(regex_date)) {
+                commitContributionArray[date] += 1;
+              }
+            }
+          }
+        }
+      }
+
+      // This will deliver the final data back to our eventual function to sum up all the pieces
+      callback(null, commitContributionArray);
+  });
+}
+
+function testParallel(dateArray, repos) {
+
+  async.parallel({
+      one: function(callback) {
+          getCommitContributions(dateArray, repos, callback);
+      },
+      two: function(callback) {
+          getIssueContributions(dateArray, repos, callback);
+      },
+      three: function(callback) {
+          getPullRequestContributions(dateArray, repos, callback);
+      }
+    },
+    function(err, results) {
+      var combinedResults = results.one + results.two + results.three
+      const fs = require('fs');
+      fs.writeFile('output.txt', combinedResults, (err) => {
+        if (err) throw err;
+      })
+    });
+}
+
+if (process.argv[2] != undefined) {
+  user = process.argv[2]
+}
+
+console.log(`Generating Github Contributions for ${user}`);
+console.log("Results will be stored in output.txt");
 dateArray = computeDateArray()
-getRepositoryData(dateArray)
-
-// Once we have repo data, we can keep only the relevant ones, Question, what if updated is enough (don't need to go through commits and PRs)
-
-
-// Currently, this makes 365 calls to Github api
-// Why not call it once and iterate over the data (store that data in a tmp file)
-// for (var i = 0; i < dateArray.length; i++) {
-//   getRepositoryContributions(dateArray[i], `https://api.github.com/users/${user}/repos`)
-// }
-
-// {
-//   "message": "API rate limit exceeded for 169.145.3.56. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
-//   "documentation_url": "https://developer.github.com/v3/#rate-limiting"
-// }
-
-
+getRepositoryList(function(repos) {
+  testParallel(dateArray, repos);
+})
