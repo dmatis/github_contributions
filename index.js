@@ -154,7 +154,6 @@ function getCommitContributions(res, dates, repos) {
         }
       }
     })
-    // .then(console.dir(contributionArray));
   }
 }
 
