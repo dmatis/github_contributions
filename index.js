@@ -1,6 +1,5 @@
 var async = require("async");
-var user = 'Dogild';
-var userInfo = {};
+var user = 'amilner42';
 var repos = [];
 var token = 'd0842c628bb93efa5cc576633e9034f90b637580';
 var contributionArray = new Array(365).fill(0);
@@ -44,8 +43,8 @@ function formattedRepositoryList(res) {
   return repos
 }
 
+// Get repos: 1 API call
 function getRepositoryList(callback) {
-  // Get repos: 1 API call
   const request = require('request');
   const options = {
     url: `https://api.github.com/users/${user}/repos`,
@@ -65,6 +64,7 @@ function getRepositoryList(callback) {
   })
 };
 
+// Get Pull Request Contributions: 1 API call per Repo
 function getPullRequestContributions(dates, repos, callback) {
 
   async.map(repos, function (repo, callback) {
@@ -111,7 +111,7 @@ function getPullRequestContributions(dates, repos, callback) {
 }
 
 
-// Need to filter out results that are not created by user
+// Get Issue Contributions: 1 API call per Repo
 function getIssueContributions(dates, repos, callback) {
 
   async.map(repos, function (repo, callback) {
@@ -159,6 +159,7 @@ function getIssueContributions(dates, repos, callback) {
 
 }
 
+// Get Commit Contributions: 1 API call per Repo
 function getCommitContributions(dates, repos, callback) {
 
   async.map(repos, function (repo, callback) {
@@ -206,7 +207,7 @@ function getCommitContributions(dates, repos, callback) {
   });
 }
 
-function testParallel(dateArray, repos) {
+function getContributions(dateArray, repos, callback) {
 
   async.parallel({
       one: function(callback) {
@@ -220,21 +221,33 @@ function testParallel(dateArray, repos) {
       }
     },
     function(err, results) {
-      var combinedResults = results.one + results.two + results.three
+      var arrayResult = [results.one, results.two, results.three]
+      combinedResults = arrayResult.reduce((r, a) => a.map((b, i) => (r[i] || 0) + b), []);
       const fs = require('fs');
       fs.writeFile('output.txt', combinedResults, (err) => {
         if (err) throw err;
       })
+      callback(null, combinedResults);
     });
 }
 
-if (process.argv[2] != undefined) {
-  user = process.argv[2]
-}
+const express = require('express')
+const app = express()
+const port = 3000
 
-console.log(`Generating Github Contributions for ${user}`);
-console.log("Results will be stored in output.txt");
-dateArray = computeDateArray()
-getRepositoryList(function(repos) {
-  testParallel(dateArray, repos);
-})
+app.get('/get_contributions', function(req, res) {
+  user = req.query.user
+  console.log(`Generating Github Contributions for ${user}`);
+  console.log("Results will be stored in output.txt");
+  dateArray = computeDateArray()
+
+  getRepositoryList(function(repos) {
+    getContributions(dateArray, repos, function(err, result) {
+      res.send(result)
+    })
+  })
+
+});
+
+app.listen(port, () => console.log(`Github Contribution app listening on port ${port}`))
+
