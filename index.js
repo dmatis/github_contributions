@@ -1,7 +1,7 @@
 var async = require("async");
-var user = 'amilner42';
+var user = 'Dogild';
 var repos = [];
-var token = 'd0842c628bb93efa5cc576633e9034f90b637580';
+var token = '';
 var contributionArray = new Array(365).fill(0);
 
 // Get today's date and compute the formatted dates for a year
@@ -37,6 +37,7 @@ function getUserInfo(callback) {
 }
 
 function formattedRepositoryList(res) {
+  repos.length = 0 // Clear old data if present
   for (var i = 0; i < res.length; i++) {
     repos.push(res[i].name);
   }
@@ -236,17 +237,27 @@ const app = express()
 const port = 3000
 
 app.get('/get_contributions', function(req, res) {
-  user = req.query.user
-  console.log(`Generating Github Contributions for ${user}`);
-  console.log("Results will be stored in output.txt");
-  dateArray = computeDateArray()
+  if (req.query.user == undefined) {
+    res.status(400);
+    res.send('User parameter not provided');
+  }
+  else if (req.query.token == undefined) {
+    res.status(400);
+    res.send('Token parameter not provided');
+  }
+  else {
+    user = req.query.user
+    token = req.query.token
+    console.log(`Generating Github Contributions for ${user}`);
+    console.log("Results will be stored in output.txt");
+    dateArray = computeDateArray()
 
-  getRepositoryList(function(repos) {
-    getContributions(dateArray, repos, function(err, result) {
-      res.send(result)
+    getRepositoryList(function(repos) {
+      getContributions(dateArray, repos, function(err, result) {
+        res.send(result)
+      })
     })
-  })
-
+  }
 });
 
 app.listen(port, () => console.log(`Github Contribution app listening on port ${port}`))
